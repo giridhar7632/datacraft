@@ -3,22 +3,22 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {
 	Form,
 	FormControl,
-	FormDescription,
 	FormField,
 	FormItem,
 	FormLabel,
 	FormMessage,
 } from '@/components/ui/form'
 import { useForm } from 'react-hook-form'
-import { useState } from 'react'
 import Link from 'next/link'
 import { z } from 'zod'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { toast } from 'sonner'
+import { Provider } from '@supabase/supabase-js'
 
 export const authSchema = z.object({
 	email: z.string().min(2),
@@ -35,9 +35,36 @@ export default function SignIn() {
 		},
 	})
 
-	function onSubmit(values: z.infer<typeof authSchema>) {
+	async function oAuthLogin(provider: Provider) {
+		const { data, error } = await supabase.auth.signInWithOAuth({
+			provider,
+		})
+
+		if (error) {
+			toast.error('Error sending magic link', {
+				description: error.message,
+			})
+		}
+	}
+
+	async function onSubmit(values: z.infer<typeof authSchema>) {
 		console.log(values)
-		router.push(`/magic-link?email=${values.email}`)
+
+		const { data, error } = await supabase.auth.signInWithOtp({
+			email: values.email,
+			options: {
+				emailRedirectTo: 'http://localhost:3000',
+			},
+		})
+
+		if (error) {
+			toast.error('Error sending magic link', {
+				description: error.message,
+			})
+		} else {
+			console.log(data)
+			router.push(`/magic-link?email=${values.email}`)
+		}
 	}
 
 	return (
@@ -101,7 +128,10 @@ export default function SignIn() {
 					</FormItem>
 				)}
 			/> */}
-					<Button type='submit' className='w-full'>
+					<Button
+						type='submit'
+						className='w-full'
+						disabled={form.formState.isSubmitting}>
 						Continue with Email
 					</Button>
 				</form>
@@ -114,10 +144,16 @@ export default function SignIn() {
 			</div>
 			<div className='space-y-2'></div>
 			<div className='space-y-4'>
-				<Button variant='outline' className='w-full'>
+				<Button
+					variant='outline'
+					className='w-full'
+					onClick={() => oAuthLogin('google')}>
 					Continue with Google
 				</Button>
-				<Button variant='outline' className='w-full'>
+				<Button
+					variant='outline'
+					className='w-full'
+					onClick={() => oAuthLogin('github')}>
 					Continue with GitHub
 				</Button>
 			</div>
