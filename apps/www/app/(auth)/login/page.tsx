@@ -16,12 +16,11 @@ import { useForm } from 'react-hook-form'
 import Link from 'next/link'
 import { z } from 'zod'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { emailLogin, oAuthLogin } from '@/app/actions'
 import { toast } from 'sonner'
-import { Provider } from '@supabase/supabase-js'
 
 export const authSchema = z.object({
-	email: z.string().min(2),
+	email: z.string().min(2, 'Email is required'),
 	// password: z.string().min(8),
 })
 
@@ -35,38 +34,6 @@ export default function SignIn() {
 		},
 	})
 
-	async function oAuthLogin(provider: Provider) {
-		const { data, error } = await supabase.auth.signInWithOAuth({
-			provider,
-		})
-
-		if (error) {
-			toast.error('Error sending magic link', {
-				description: error.message,
-			})
-		}
-	}
-
-	async function onSubmit(values: z.infer<typeof authSchema>) {
-		console.log(values)
-
-		const { data, error } = await supabase.auth.signInWithOtp({
-			email: values.email,
-			options: {
-				emailRedirectTo: 'http://localhost:3000',
-			},
-		})
-
-		if (error) {
-			toast.error('Error sending magic link', {
-				description: error.message,
-			})
-		} else {
-			console.log(data)
-			router.push(`/magic-link?email=${values.email}`)
-		}
-	}
-
 	return (
 		<div className='m-auto max-w-sm space-y-6'>
 			<div className='space-y-2 text-center'>
@@ -77,7 +44,9 @@ export default function SignIn() {
 			</div>
 
 			<Form {...form}>
-				<form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+				<form
+					onSubmit={form.handleSubmit((values) => emailLogin(values.email))}
+					className='space-y-4'>
 					<FormField
 						control={form.control}
 						name='email'
@@ -147,13 +116,13 @@ export default function SignIn() {
 				<Button
 					variant='outline'
 					className='w-full'
-					onClick={() => oAuthLogin('google')}>
+					onClick={async () => await oAuthLogin('google')}>
 					Continue with Google
 				</Button>
 				<Button
 					variant='outline'
 					className='w-full'
-					onClick={() => oAuthLogin('github')}>
+					onClick={async () => await oAuthLogin('github')}>
 					Continue with GitHub
 				</Button>
 			</div>
